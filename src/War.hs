@@ -4,13 +4,7 @@ import System.Environment (getArgs)
 import Data.Sequence (update, fromList)
 import Data.Foldable (toList)
 import Config ( getConfig, hospitals, joint, Config )
-
-
--- hospitals :: [Double]
--- hospitals = [0.068, 1.25, 8.83, 17.0]
-
--- joint :: Double
--- joint = 0.15
+import Text.Printf
 
 calcNode :: Config -> Node -> Double
 calcNode conf (node, False) = max 0 $ node - sum (hospitals conf)
@@ -31,7 +25,14 @@ type Node = (Double, Bool)
 type Costs = [Cost]
 type Cost = Double
 
-data Calculated = Calculated Paths Costs deriving (Show, Eq)
+data Calculated = Calculated Paths Costs deriving (Eq)
+
+instance Show Calculated where
+    show (Calculated p c) = printf "%s\n%s\n" (show p) (show c)
+
+parseAndCalculate :: Config -> [String] -> Calculated
+parseAndCalculate conf args = Calculated parsed (map (calc conf) parsed)
+    where parsed = parseArgs args
 
 prettyPrintCalc :: Calculated -> String
 prettyPrintCalc calc = undefined
@@ -63,7 +64,10 @@ handler :: IO ()
 handler = do 
     config <- getConfig "./config.json"
     arg <- getArgs
-    print (parseArgs arg)
-    print $ map (calc config) (parseArgs arg)
+    let calc = parseAndCalculate config arg
+    putStr $ show calc
+    -- let parsed = parseArgs arg
+    -- print parsed
+    -- print $ map (calc config) parsed
 
 
