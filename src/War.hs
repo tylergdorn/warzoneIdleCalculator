@@ -3,8 +3,22 @@ module War (handler) where
 import System.Environment (getArgs)
 import Data.Sequence (update, fromList)
 import Data.Foldable (toList)
-import Config ( getConfig, hospitals, joint, Config )
-import Text.Printf
+import Config ( getConfig, hospitals, joint, Config, cheapestFree )
+import Text.Printf ( printf )
+
+type Paths = [Path]
+
+type Path = [Node]
+
+type Node = (Double, Bool)
+
+type Costs = [Cost]
+type Cost = Double
+
+data Calculated = Calculated Paths Costs Config deriving (Eq)
+
+instance Show Calculated where
+    show (Calculated p c conf) = printf "%s\n%s\n%s\n" (show p) (show c) (show (cheapestFree conf))
 
 calcNode :: Config -> Node -> Double
 calcNode conf (node, False) = max 0 $ node - sum (hospitals conf)
@@ -16,26 +30,9 @@ calc conf path = sum $ map (calcNode conf) path
 strToDouble :: [String] -> Path
 strToDouble = map parsePath
 
-type Paths = [Path]
-
-type Path = [Node]
-
-type Node = (Double, Bool)
-
-type Costs = [Cost]
-type Cost = Double
-
-data Calculated = Calculated Paths Costs deriving (Eq)
-
-instance Show Calculated where
-    show (Calculated p c) = printf "%s\n%s\n" (show p) (show c)
-
 parseAndCalculate :: Config -> [String] -> Calculated
-parseAndCalculate conf args = Calculated parsed (map (calc conf) parsed)
+parseAndCalculate conf args = Calculated parsed (map (calc conf) parsed) conf
     where parsed = parseArgs args
-
-prettyPrintCalc :: Calculated -> String
-prettyPrintCalc calc = undefined
 
 parseArgs :: [String] -> Paths
 parseArgs args = map strToDouble $ separateList args
@@ -47,18 +44,15 @@ parsePath path
 
 
 separateList :: [String] -> [[String]]
-separateList args = recursiveFunc args [[]] 0 0
+separateList args = recursiveFunc args [[]] 0 0 where
+    recursiveFunc args build i count
+        | i == length args = build
+        | args !! i == separator = recursiveFunc args (build++[[]]) (i + 1) (count + 1)
+        | otherwise = recursiveFunc args newlist (i + 1) count where
+            newlist = toList $ update count ((build!!count) ++ [args !! i]) (fromList build)
 
 separator :: String
 separator = ","
-
-recursiveFunc :: [String] -> [[String]] -> Int -> Int -> [[String]]
-recursiveFunc args build i count 
-    | i == length args = build
-    | args !! i == separator = recursiveFunc args (build++[[]]) (i + 1) (count + 1)
-    | otherwise = recursiveFunc args newlist (i + 1) count where
-        newlist = toList $ update count ((build!!count) ++ [args !! i]) (fromList build)
-
 
 handler :: IO ()
 handler = do 
@@ -66,8 +60,5 @@ handler = do
     arg <- getArgs
     let calc = parseAndCalculate config arg
     putStr $ show calc
-    -- let parsed = parseArgs arg
-    -- print parsed
-    -- print $ map (calc config) parsed
 
 
